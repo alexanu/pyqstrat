@@ -146,7 +146,6 @@ private:
 
 struct Writer {
     virtual void add_record(int line_number, const Tuple&) = 0;
-    virtual void write_batch(const std::string& batch_id = "") = 0;
     virtual void close(bool success = true) = 0;
     virtual ~Writer() {};
 };
@@ -171,7 +170,7 @@ public:
     virtual ~RecordParser() {};
 };
 
-using WriterCreator = Function<std::shared_ptr<Writer>(const std::string&, const Schema&, bool, int)>;
+using WriterCreator = Function<std::shared_ptr<Writer>(const std::string&, const Schema&)>;
 using CheckFields = Function<bool(const std::vector<std::string>&)>;
 using TimestampParser = Function<int64_t(const std::string&)>;
 using QuoteParser = Function<std::shared_ptr<Record> (const std::vector<std::string>&)>;
@@ -181,12 +180,11 @@ using OpenInterestParser = Function<std::shared_ptr<Record>(const std::vector<st
 using OtherParser = Function<std::shared_ptr<Record>(const std::vector<std::string>&)>;
 using RecordFieldParser = Function<std::shared_ptr<Record>(const std::vector<std::string>&)>;
 using Aggregator = Function<void(const Record*, int)>;
-using MissingDataHandler = Function<void(std::shared_ptr<Record>)>;
+using MissingDataHandler = Function<bool(std::shared_ptr<Record>)>;
 using BadLineHandler = Function<std::shared_ptr<Record>(int, const std::string&, const std::exception&)>;
 using LineFilter = Function<bool(const std::string&)>;
-using CheckFields = Function<bool(const std::vector<std::string>&)>;
-class StreamHolder;
-using RecordGenerator = Function<std::shared_ptr<StreamHolder>(const std::string&, const std::string&)>;
+using LineReader = Function<bool(std::string&)>;
+using RecordGenerator = Function<std::shared_ptr<LineReader>(const std::string&, const std::string&)>;
 using FileProcessor = Function<int(const std::string&, const std::string& compression)>;
 using RecordFilter = Function<bool (const Record &)>;
 

@@ -66,21 +66,24 @@ if 'CONDA_PREFIX' in os.environ or 'CONDA_PREFIX_1' in os.environ:
     else:
         library_dirs = [conda_prefix + '/lib']
 
-    if sys.platform in ["unix"]:
-        extra_link_args.append("-D_GLIBCXX_USE_CXX11_ABI=0")
-
-    if sys.platform in ["darwin"]:
-        extra_link_args.append("-stdlib=libc++")
-        extra_link_args.append("-mmacosx-version-min=10.7")
-        link_dirs = ',-rpath,'.join(library_dirs)
-        extra_link_args.append(f'-Wl,-rpath,{link_dirs}')
-
 else:
-    print(f'CONDA_PREFIX or CONDA_PREFIX_1 environment variables not found for including and linking to boost and arrow header files.')
+    print(f'CONDA_PREFIX or CONDA_PREFIX_1 environment variables not found for including and linking to boost header files.')
+
+
+if sys.platform in ["unix"]:
+    extra_link_args.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+
+if sys.platform in ["darwin"]:
+    extra_link_args.append("-stdlib=libc++")
+    extra_link_args.append("-mmacosx-version-min=10.7")
+    link_dirs = ',-rpath,'.join(library_dirs)
+    extra_link_args.append(f'-Wl,-rpath,{link_dirs}')
 
 libraries = [
     'z',
-    'arrow',
+    'zip',
+    'hdf5_cpp',
+    'hdf5'
 ]
 
 if sys.platform not in ["win32", "cygwin"]:
@@ -93,17 +96,20 @@ ext_modules = [
             'pyqstrat/cpp/utils.cpp',
             'pyqstrat/cpp/aggregators.cpp',
             'pyqstrat/cpp/text_file_parsers.cpp',
-            'pyqstrat/cpp/arrow_writer.cpp',
             'pyqstrat/cpp/tests.cpp',
             'pyqstrat/cpp/text_file_processor.cpp',
             'pyqstrat/cpp/pybind.cpp',
             'pyqstrat/cpp/py_import_call_execute.cpp',
             'pyqstrat/cpp/pybind_options.cpp',
             'pyqstrat/cpp/options.cpp',
+            'pyqstrat/cpp/file_reader.cpp',
+            'pyqstrat/cpp/zip_reader.cpp',
+            'pyqstrat/cpp/hdf5_writer.cpp',
             'pyqstrat/cpp/lets_be_rational/normaldistribution.cpp',
             'pyqstrat/cpp/lets_be_rational/erf_cody.cpp',
             'pyqstrat/cpp/lets_be_rational/rationalcubic.cpp',
             'pyqstrat/cpp/lets_be_rational/lets_be_rational.cpp',
+            'pyqstrat/cpp/test_quote_pair.cpp'
         ],
         include_dirs=include_dirs,
         library_dirs=library_dirs,
@@ -149,6 +155,7 @@ class BuildExt(build_ext):
     def build_extensions(self):
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
+        if ct != 'msvc': opts.append("-Wno-return-std-move") # Annoying warnings from pybind11/numpy.h
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
             #opts.append('-D_GLIBCXX_USE_CXX11_ABI=0') # ABI for std::string changed in C++11.  See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
@@ -159,6 +166,7 @@ class BuildExt(build_ext):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            opts.append('/DH5_BUILT_AS_DYNAMIC_LIB') # For windows, we need this so we link against dynamic hdf5 lib instead of static linking
         for ext in self.extensions:
             ext.extra_compile_args = opts
         try:
@@ -199,14 +207,14 @@ setup(
     url='http://github.com/abbass2/pyqstrat/',
     license='BSD',
     tests_require=['pytest'],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     install_requires=['pandas>=0.22',
                       'numpy>=1.14',
                       'matplotlib>=2.2.2',
                       'scipy >= 1.0.0',
 		      'ipython>=6.5.0',
                       'pybind11>=2.2',
-                      'pyarrow>=0.1.0'
+                      'sortedcontainers>=2.0.5'
                     ],
     description='fast / extensible library for backtesting quantitative strategies',
     long_description=long_description,
@@ -224,7 +232,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
         'Topic :: Office/Business :: Financial :: Investment',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3 :: Only',
         ],
     extras_require={

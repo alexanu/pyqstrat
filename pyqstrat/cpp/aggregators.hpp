@@ -14,10 +14,10 @@ int64_t parse_frequency(const std::string& frequency_str);
 
 class SymbolTradeBar final {
 public:
-    SymbolTradeBar (std::shared_ptr<Writer>, const std::string& id, bool batch_by_id, int64_t frequency);
+    SymbolTradeBar (std::shared_ptr<Writer>, const std::string& id, int64_t frequency);
     void add_trade(const TradeRecord& trade, int line_number);
     void close();
-    virtual ~SymbolTradeBar();
+    ~SymbolTradeBar();
 private:
     void write_records();
     void write_record(int line_number);
@@ -27,7 +27,6 @@ private:
     
     std::shared_ptr<Writer> _writer;
     std::string _id;
-    bool _batch_by_id;
     int64_t _frequency;
     int64_t _last_update;
     float _o;
@@ -46,24 +45,19 @@ private:
 
 class TradeBarAggregator final : public Aggregator {
 public:
-    TradeBarAggregator(WriterCreator*, const std::string& output_file_prefix, const std::string& frequency = "5m",
-                       bool batch_by_id = true, int batch_size = std::numeric_limits<int>::max(),
-                       Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    TradeBarAggregator(WriterCreator*, const std::string& frequency = "5m", Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* trade, int line_number) override;
     void close();
     ~TradeBarAggregator();
 private:
     std::shared_ptr<Writer> _writer;
-    bool _batch_by_id;
-    int _batch_size;
     int64_t _frequency;
     std::map<std::string, std::shared_ptr<SymbolTradeBar>> _trade_bars_by_symbol;
-    int _record_num;
-};
+ };
 
 class SymbolQuoteTOB final {
 public:
-    SymbolQuoteTOB(std::shared_ptr<Writer>, const std::string& id, bool batch_by_id, int64_t frequency);
+    SymbolQuoteTOB(std::shared_ptr<Writer>, const std::string& id, int64_t frequency);
     void add_quote(const QuoteRecord& quote, int line_number);
     void close();
     ~SymbolQuoteTOB();
@@ -75,7 +69,6 @@ private:
 
     std::shared_ptr<Writer> _writer;
     std::string _id;
-    bool _batch_by_id;
     int64_t _timestamp;
     int64_t _last_update;
     float _bid;
@@ -93,55 +86,51 @@ private:
 class QuoteTOBAggregator final : public Aggregator {
 public:
     //Assumes quotes are processed in time order.  Set frequency to "" to create bid / offer every time TOB changes.
-    QuoteTOBAggregator(WriterCreator*, const std::string& output_file_prefix, const std::string& frequency = "5m",
-                       bool batch_by_id = true, int batch_size = std::numeric_limits<int>::max(),
-                       Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    QuoteTOBAggregator(WriterCreator*, const std::string& frequency = "5m", Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* quote, int line_number) override;
     void close();
-    virtual ~QuoteTOBAggregator();
+    ~QuoteTOBAggregator();
 private:
     std::shared_ptr<Writer> _writer;
-    bool _batch_by_id;
-    int _batch_size;
     int64_t _frequency;
-    int _record_num;
     std::map<std::string, std::shared_ptr<SymbolQuoteTOB>> _tob_by_symbol;
 };
 
 class AllQuoteAggregator final : public Aggregator {
 public:
-    AllQuoteAggregator(WriterCreator*, const std::string& output_file_prefix,
-                       int batch_size = 10000, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    AllQuoteAggregator(WriterCreator*, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* quote, int line_number) override;
 private:
     std::shared_ptr<Writer> _writer;
     std::string _id;
+    int _line_number_offset;
 };
 
 class AllQuotePairAggregator final : public Aggregator {
 public:
-    AllQuotePairAggregator(WriterCreator*, const std::string& output_file_prefix,
-                       int batch_size = 10000, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    AllQuotePairAggregator(WriterCreator*, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* quote, int line_number) override;
 private:
-    std::shared_ptr<Writer> _writer;
-    std::string _id;
+    //std::string _id;
+    WriterCreator* _writer_creator;
+    Schema _schema;
+    std::map<std::string, std::shared_ptr<Writer>> _writers;
 };
 
 class AllTradeAggregator final : public Aggregator {
 public:
-    AllTradeAggregator(WriterCreator*, const std::string& output_file_prefix, int batch_size = 10000,
-                       Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    AllTradeAggregator(WriterCreator*, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* trade, int line_number) override;
 private:
-    std::shared_ptr<Writer> _writer;
-    std::string _id;
+    //std::string _id;
+    WriterCreator* _writer_creator;
+    Schema _schema;
+    std::map<std::string, std::shared_ptr<Writer>> _writers;
 };
 
 class AllOpenInterestAggregator final : public Aggregator {
 public:
-    AllOpenInterestAggregator(WriterCreator*, const std::string& output_file_prefix,int batch_size = 10000,
-                              Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    AllOpenInterestAggregator(WriterCreator*, const Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* oi, int line_number) override;
 private:
     std::shared_ptr<Writer> _writer;
@@ -150,8 +139,7 @@ private:
 
 class AllOtherAggregator final : public Aggregator {
 public:
-    AllOtherAggregator(WriterCreator*, const std::string& output_file_prefix, int batch_size = 10000,
-                       Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
+    AllOtherAggregator(WriterCreator*, Schema::Type timestamp_unit = Schema::TIMESTAMP_MILLI);
     void call(const Record* other, int line_number) override;
 private:
     std::shared_ptr<Writer> _writer;

@@ -6,58 +6,52 @@
 #include <sys/types.h>
 #include<iostream>
 
-#ifndef _WIN32
+#ifdef _WIN32
 
-#include <boost/iostreams/filter/bzip2.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filter/lzma.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-
-#else
-
-#include <process.h>
+#include <process.h> // For getpid on Windows
 
 #endif
 
-#include "utils.hpp"
+
 #include "text_file_processor.hpp"
 
 using namespace std;
 
-#ifndef _WIN32
-
-namespace io = boost::iostreams;
-
-#endif
-
-void PriceQtyMissingDataHandler::call(shared_ptr<Record> record) {
+bool PriceQtyMissingDataHandler::call(shared_ptr<Record> record) {
     shared_ptr<QuotePairRecord> quote_pair = dynamic_pointer_cast<QuotePairRecord>(record);
     if (quote_pair) {
         if (quote_pair->bid_qty == 0) quote_pair->bid_qty = NAN;
         if (quote_pair->bid_price == 0) quote_pair->bid_price = NAN;
         if (quote_pair->ask_qty == 0) quote_pair->ask_qty = NAN;
         if (quote_pair->ask_price == 0) quote_pair->ask_price = NAN;
-        return;
+        return true;
     }
     
     shared_ptr<QuoteRecord> quote = dynamic_pointer_cast<QuoteRecord>(record);
     if (quote) {
         if (quote->qty == 0) quote->qty = NAN;
         if (quote->price == 0) quote->price = NAN;
-        return;
+        return true;
     }
     shared_ptr<TradeRecord> trade = dynamic_pointer_cast<TradeRecord>(record);
     if (trade) {
-        if (trade->qty == 0) trade->qty = NAN;
-        if (trade->price == 0) trade->price = NAN;
-        return;
+        bool ret = true;
+        if (trade->qty == 0) {
+            trade->qty = NAN;
+            ret = false;
+        }
+        if (trade->price == 0) {
+            trade->price = NAN;
+            ret = false;
+        }
+        return ret;
     }
     shared_ptr<OpenInterestRecord> oi = dynamic_pointer_cast<OpenInterestRecord>(record);
     if (oi) {
         if (oi->qty == 0) oi->qty = NAN;
-        return;
+        return true;
     }
+    return true;
 }
 
 PrintBadLineHandler::PrintBadLineHandler(bool raise) : _raise(raise) {}
@@ -68,27 +62,6 @@ shared_ptr<Record> PrintBadLineHandler::call(int line_number, const std::string&
     return nullptr;
 }
 
-shared_ptr<StreamHolder> TextFileDecompressor::call(const string& input_filename, const string& compression) {
-    if (!compression.empty()) {
-#ifdef _WIN32
-        error("Reading compressed marketdata files not currently supported on windows");
-#endif
-    } else {
-        std::shared_ptr<ifstream> file = shared_ptr<ifstream>(new ifstream(input_filename, std::ios_base::in));
-        return shared_ptr<StreamHolder>(new StreamHolder(nullptr, nullptr, file));
-    }
-#ifndef _WIN32
-    std::shared_ptr<ifstream> file = shared_ptr<ifstream>(new ifstream(input_filename, std::ios_base::in | std::ios_base::binary));
-    auto buf = shared_ptr<io::filtering_streambuf<io::input>>(new io::filtering_streambuf<io::input>());
-    if (compression == "gzip") buf->push(boost::iostreams::gzip_decompressor());
-    else if (compression == "bz2") buf->push(io::bzip2_decompressor());
-    else if (compression == "xz") buf->push(io::lzma_decompressor());
-    else error("invalid compression: " << compression);
-    buf->push(*file);
-    auto istr = shared_ptr<istream>(new istream(buf.get()));
-    return shared_ptr<StreamHolder>(new StreamHolder(file, buf, istr));
-#endif
-}
 
 RegExLineFilter::RegExLineFilter(const std::string& pattern) : _pattern (pattern) {}
     
@@ -150,10 +123,10 @@ int TextFileProcessor::call(const std::string& input_filename, const std::string
 #else
     cout << "processing file: " << input_filename << " process id: " << getpid() << endl;
 #endif
-    shared_ptr<StreamHolder> istr = _record_generator->call(input_filename, compression);
+    shared_ptr<LineReader> istr = _record_generator->call(input_filename, compression);
     string line;
     int line_number = 0;
-    while ((*istr)(line)) {
+    while (istr->call(line)) {
         line_number++;
         //if (line_number > 200000) break;
         if (line_number <= _skip_rows) continue;
@@ -168,15 +141,12 @@ int TextFileProcessor::call(const std::string& input_filename, const std::string
                 record = _bad_line_handler->call(line_number, line, ex);
                 if (!record) continue;
             }
-            //if (line_number % 10000 == 0) cout << "got record from line: " << line_number << ":" << line << endl;
             if (_record_filter && !_record_filter->call(*record)) continue;
-            if (_missing_data_handler) _missing_data_handler->call(record);
+            if ((_missing_data_handler) && (!_missing_data_handler->call(record))) continue;
             for (auto aggregator : _aggregators) {
                 aggregator->call(record.get(), line_number);
             }
         }
     }
-    cout << "finished file: " << input_filename << endl;
-
     return line_number;
 }

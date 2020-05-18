@@ -29,26 +29,10 @@ pyqstrat.holiday\_calendars module
     :undoc-members:
     :show-inheritance:
 
-pyqstrat.marketdata module
---------------------------
-
-.. automodule:: pyqstrat.marketdata
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 pyqstrat.account module
 -----------------------
 
 .. automodule:: pyqstrat.account
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pyqstrat.orders module
-----------------------
-
-.. automodule:: pyqstrat.orders
     :members:
     :undoc-members:
     :show-inheritance:
@@ -110,6 +94,24 @@ pyqstrat.marketdata\_processor module
 -------------------------------------
 
 .. automodule:: pyqstrat.marketdata_processor
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :special-members: __call__, __init__
+
+pyqstrat.trade\_bars module
+---------------------------
+
+.. automodule:: pyqstrat.trade_bars
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :special-members: __call__, __init__
+
+pyqstrat.markets module
+-------------------------------------
+
+.. automodule:: pyqstrat.markets
     :members:
     :undoc-members:
     :show-inheritance:

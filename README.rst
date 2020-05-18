@@ -9,14 +9,14 @@ This framework is designed for capable programmers who are comfortable with nump
 
 The goals are:
 
-* Speed - Performance sensitive components are written at the numpy level, or in C++, which can lead to performance improvement of several orders of magnitude over python code.  Where possible, we parrallelize work so you can take advantage of all the cores available on your machine.
+* Speed - Performance sensitive components are written at the numpy level, or in C++, which can lead to performance improvement of several orders of magnitude over regular Python code.  Where possible, we parrallelize work so you can take advantage of all the cores available on your machine.
 * Transparency - If you are going to commit money to a strategy, you want to know exactly what assumptions you are making.  The code is written and documented so these are as clear as possible.
 * Extensibility - It would be impossible to think of all requirements for backtesting strategies that traders could come up with.  In addition, traders will want to measure different metrics depending on the strategy being traded.
 
 Using this framework, you can:
 
 * Construct a portfolio containing multiple strategies that run concurrently
-* Construct indicators, trading signals, trading rules and market simulators and add them to a strategy
+* Create indicators, trading signals, trading rules and market simulators and add them to a strategy
 * Add multiple symbols representing real or "virtual" instruments to a strategy
 * Reuse existing market simulation or build your own to simulate how and when orders are filled
 * Measure returns, drawdowns, common return metrics such as sharpe, calmar and also add your own metrics.
@@ -32,28 +32,17 @@ Installation
 ------------
 I would strongly recommend installing anaconda and creating an anaconda environment. See installation instructions at https://docs.anaconda.com/anaconda/install/
 
-pyqstrat relies on numpy, scipy, matplotlib and pandas which in turn use Fortran and C code that needs to be compiled.  It uses apache arrow as its market data file format and boost C++ libaries
+pyqstrat relies on numpy, scipy, matplotlib and pandas which in turn use Fortran and C code that needs to be compiled.  It uses boost C++ libaries.  It uses HDF5 data format as its market data file format.
 
 ::
 
-   conda install boost-cpp arrow-cpp -c conda-forge
+   conda install boost-cpp -c conda-forge libzip
 
    pip install pyqstrat
 
 Requirements:
 
-* Python_ version 3.6 or higher;
-
-Known Install issues:
-
-* arrow-cpp 0.11.1 should not be used, please move to 0.12.1 or later. ( problem with the C++ 11 string ABI ). If the above generic conda command tries to install 0.11.1, please say 'n', and then use this command:  
-
-::
-
-   conda install arrow-cpp=0.12.* -c conda-forge
-   conda install pyarrow=0.12.* -c conda-forge
-   pip install pyqstrat
-
+* Python_ version 3.7 or higher;
 
 Documentation
 -------------
@@ -96,7 +85,7 @@ The software is provided on the conditions of the simplified BSD license.
 
 .. _Python: http://www.python.org
 
-.. |PyVersion| image:: https://img.shields.io/badge/python-3.6+-blue.svg
+.. |PyVersion| image:: https://img.shields.io/badge/python-3.7+-blue.svg
    :alt:
 
 .. |Status| image:: https://img.shields.io/badge/status-beta-green.svg
